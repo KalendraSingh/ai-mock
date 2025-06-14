@@ -40,6 +40,7 @@ const InterviewSession: React.FC = () => {
   const isSubmitting = useRef(false);
   const lastSubmittedText = useRef('');
   const shouldAutoStartListening = useRef(false);
+  const guidanceGiven = useRef(false);
 
   const speechSupport = speechService.isSupported();
   const totalQuestions = 25;
@@ -153,7 +154,7 @@ const InterviewSession: React.FC = () => {
     if (pauseTimer) clearTimeout(pauseTimer);
     if (isSubmitting.current) return;
     
-    setPauseCountdown(20);
+    setPauseCountdown(15); // Reduced from 20 to 15 seconds
 
     const countdown = setInterval(() => {
       setPauseCountdown(prev => {
@@ -172,14 +173,14 @@ const InterviewSession: React.FC = () => {
       }
       setPauseTimer(null);
       setPauseCountdown(0);
-    }, 20000);
+    }, 15000); // Reduced from 20 to 15 seconds
 
     setPauseTimer(timer);
   };
 
   const startListening = () => {
     if (!speechSupport.recognition) {
-      alert('Speech recognition is not supported in your browser');
+      alert('Speech recognition is not supported in your browser. Please use Chrome or Edge for the best experience.');
       return;
     }
 
@@ -215,6 +216,11 @@ const InterviewSession: React.FC = () => {
           clearTimeout(pauseTimer);
           setPauseTimer(null);
           setPauseCountdown(0);
+        }
+        
+        // Show user-friendly error message
+        if (err.toString().includes('not-allowed') || err.toString().includes('audio-capture')) {
+          alert('Microphone access is required for the interview. Please allow microphone access and try again.');
         }
       }
     );
@@ -310,8 +316,9 @@ const InterviewSession: React.FC = () => {
           setQuestionProgress(updatedProgress);
         }
 
-        // Provide guidance if answer is incorrect or incomplete
-        if (!validation.isCorrect || validation.score < 70) {
+        // Provide guidance if answer is incorrect or incomplete, but only once per question
+        if ((!validation.isCorrect || validation.score < 70) && !guidanceGiven.current) {
+          guidanceGiven.current = true;
           const guidance = await geminiService.provideGuidance(currentQuestion, transcript, selectedResume);
           const guidanceEntry: ConversationEntry = {
             id: (Date.now() + 1).toString(),
@@ -336,6 +343,7 @@ const InterviewSession: React.FC = () => {
           }
         } else {
           // Move to next question or end interview
+          guidanceGiven.current = false; // Reset for next question
           const nextIndex = currentQuestionIndex + 1;
           if (nextIndex < totalQuestions && questionProgress) {
             const nextQuestion = await geminiService.getNextQuestion(questionProgress, nextIndex);
@@ -434,6 +442,7 @@ const InterviewSession: React.FC = () => {
     stopListening();
     speechService.stopSpeaking();
     shouldAutoStartListening.current = false;
+    guidanceGiven.current = false;
     if (pauseTimer) {
       clearTimeout(pauseTimer);
       setPauseTimer(null);

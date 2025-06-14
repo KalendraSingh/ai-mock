@@ -3,6 +3,8 @@ class SpeechService {
   private recognition: any;
   private isListening: boolean = false;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
+  private recognitionTimeout: NodeJS.Timeout | null = null;
+  private silenceTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     this.synthesis = window.speechSynthesis;
@@ -17,6 +19,10 @@ class SpeechService {
       this.recognition.interimResults = true;
       this.recognition.lang = 'en-US';
       this.recognition.maxAlternatives = 1;
+      
+      // Improved settings for better recognition
+      this.recognition.grammars = null;
+      this.recognition.serviceURI = '';
     }
   }
 
@@ -31,9 +37,20 @@ class SpeechService {
       this.stopSpeaking();
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = options?.rate || 0.9;
+      utterance.rate = options?.rate || 0.85; // Slightly slower for better clarity
       utterance.pitch = options?.pitch || 1;
-      utterance.volume = options?.volume || 1;
+      utterance.volume = options?.volume || 0.9;
+      
+      // Try to use a more natural voice
+      const voices = this.synthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.lang.startsWith('en') && 
+        (voice.name.includes('Google') || voice.name.includes('Microsoft') || voice.name.includes('Natural'))
+      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+      
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
 
       utterance.onend = () => {
         this.currentUtterance = null;
@@ -63,7 +80,19 @@ class SpeechService {
       return;
     }
 
+    // Clear any existing timeouts
+    if (this.recognitionTimeout) {
+      clearTimeout(this.recognitionTimeout);
+      this.recognitionTimeout = null;
+    }
+    if (this.silenceTimeout) {
+      clearTimeout(this.silenceTimeout);
+      this.silenceTimeout = null;
+    }
+
     this.isListening = true;
+    let lastTranscript = '';
+    let finalTranscriptReceived = false;
     
     this.recognition.onresult = (event: any) => {
       let finalTranscript = '';
@@ -73,25 +102,88 @@ class SpeechService {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           finalTranscript += transcript;
+          finalTranscriptReceived = true;
         } else {
           interimTranscript += transcript;
         }
       }
 
-      if (finalTranscript) {
+      // Clear silence timeout when we receive speech
+      if (this.silenceTimeout) {
+        clearTimeout(this.silenceTimeout);
+        this.silenceTimeout = null;
+      }
+
+      if (finalTranscript && finalTranscript.trim() !== lastTranscript.trim()) {
+        lastTranscript = finalTranscript.trim();
         onResult(finalTranscript.trim(), true);
-      } else if (interimTranscript) {
+      } else if (interimTranscript && interimTranscript.trim()) {
         onResult(interimTranscript.trim(), false);
+        
+        // Set silence timeout for interim results
+        this.silenceTimeout = setTimeout(() => {
+          if (interimTranscript.trim() && !finalTranscriptReceived) {
+            onResult(interimTranscript.trim(), true);
+          }
+        }, 3000); // 3 seconds of silence
       }
     };
 
+    this.recognition.onspeechstart = () => {
+      // Clear timeouts when speech starts
+      if (this.recognitionTimeout) {
+        clearTimeout(this.recognitionTimeout);
+        this.recognitionTimeout = null;
+      }
+      if (this.silenceTimeout) {
+        clearTimeout(this.silenceTimeout);
+        this.silenceTimeout = null;
+      }
+    };
+
+    this.recognition.onspeechend = () => {
+      // Set a timeout to restart recognition if no final result
+      this.recognitionTimeout = setTimeout(() => {
+        if (this.isListening && !finalTranscriptReceived) {
+          this.restartRecognition(onResult, onError);
+        }
+      }, 1000);
+    };
+
     this.recognition.onerror = (event: any) => {
-      this.isListening = false;
-      onError?.(event.error);
+      console.error('Speech recognition error:', event.error);
+      
+      // Handle specific errors
+      if (event.error === 'no-speech') {
+        // Restart recognition for no-speech errors
+        setTimeout(() => {
+          if (this.isListening) {
+            this.restartRecognition(onResult, onError);
+          }
+        }, 500);
+      } else if (event.error === 'audio-capture') {
+        this.isListening = false;
+        onError?.(new Error('Microphone access denied or not available'));
+      } else if (event.error === 'network') {
+        // Try to restart on network errors
+        setTimeout(() => {
+          if (this.isListening) {
+            this.restartRecognition(onResult, onError);
+          }
+        }, 1000);
+      } else {
+        this.isListening = false;
+        onError?.(event.error);
+      }
     };
 
     this.recognition.onend = () => {
-      this.isListening = false;
+      // Auto-restart recognition if still listening
+      if (this.isListening) {
+        setTimeout(() => {
+          this.restartRecognition(onResult, onError);
+        }, 100);
+      }
     };
 
     try {
@@ -102,10 +194,51 @@ class SpeechService {
     }
   }
 
-  stopListening(): void {
-    if (this.recognition && this.isListening) {
+  private restartRecognition(onResult: (transcript: string, isFinal: boolean) => void, onError?: (error: any) => void): void {
+    if (!this.isListening) return;
+    
+    try {
       this.recognition.stop();
-      this.isListening = false;
+      setTimeout(() => {
+        if (this.isListening) {
+          this.recognition.start();
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error restarting recognition:', error);
+      // Try to start fresh
+      setTimeout(() => {
+        if (this.isListening) {
+          try {
+            this.recognition.start();
+          } catch (e) {
+            this.isListening = false;
+            onError?.(e);
+          }
+        }
+      }, 500);
+    }
+  }
+
+  stopListening(): void {
+    this.isListening = false;
+    
+    // Clear all timeouts
+    if (this.recognitionTimeout) {
+      clearTimeout(this.recognitionTimeout);
+      this.recognitionTimeout = null;
+    }
+    if (this.silenceTimeout) {
+      clearTimeout(this.silenceTimeout);
+      this.silenceTimeout = null;
+    }
+    
+    if (this.recognition) {
+      try {
+        this.recognition.stop();
+      } catch (error) {
+        console.error('Error stopping recognition:', error);
+      }
     }
   }
 
@@ -120,5 +253,3 @@ class SpeechService {
     return this.isListening;
   }
 }
-
-export const speechService = new SpeechService();

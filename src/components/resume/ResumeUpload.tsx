@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,8 +20,18 @@ const ResumeUpload: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [resumes, setResumes] = useState<ResumeData[]>(() => storageService.getResumes());
+  const [resumes, setResumes] = useState<ResumeData[]>([]);
   const [selectedResume, setSelectedResume] = useState<ResumeData | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Load resumes on component mount
+  useEffect(() => {
+    const loadedResumes = storageService.getResumes();
+    setResumes(loadedResumes);
+    if (loadedResumes.length > 0 && !selectedResume) {
+      setSelectedResume(loadedResumes[loadedResumes.length - 1]);
+    }
+  }, []);
 
   const simulateProgress = (callback: () => void) => {
     setUploadProgress(0);
@@ -61,12 +71,34 @@ const ResumeUpload: React.FC = () => {
     const file = acceptedFiles[0];
     if (!file) return;
 
+    // Prevent multiple uploads
+    if (isUploading || isProcessing) {
+      return;
+    }
+
     setIsUploading(true);
+    setIsProcessing(true);
     setUploadError(null);
 
     try {
       simulateProgress(async () => {
         try {
+          // Check if file already exists
+          const existingResumes = storageService.getResumes();
+          const existingFile = existingResumes.find(resume => 
+            resume.fileName === file.name && 
+            Math.abs(new Date(resume.uploadDate).getTime() - Date.now()) < 60000 // Within 1 minute
+          );
+
+          if (existingFile) {
+            setUploadError('This file has already been uploaded recently.');
+            setIsUploading(false);
+            setIsProcessing(false);
+            setUploadProgress(0);
+            setUploadStatus('');
+            return;
+          }
+
           // Simulate PDF text extraction (in real app, use pdf-parse or similar)
           const reader = new FileReader();
           reader.onload = async (e) => {
@@ -77,19 +109,22 @@ const ResumeUpload: React.FC = () => {
               const analysisResult = await geminiService.analyzeResume(text || 'Sample resume text for analysis');
               
               const resumeData: ResumeData = {
-                id: Date.now().toString(),
+                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
                 fileName: file.name,
                 uploadDate: new Date(),
                 ...analysisResult
               };
 
+              // Save and update state
               storageService.saveResume(resumeData);
-              setResumes(storageService.getResumes());
+              const updatedResumes = storageService.getResumes();
+              setResumes(updatedResumes);
               setSelectedResume(resumeData);
               
               // Reset progress states
               setTimeout(() => {
                 setIsUploading(false);
+                setIsProcessing(false);
                 setUploadProgress(0);
                 setUploadStatus('');
               }, 1000);
@@ -97,15 +132,25 @@ const ResumeUpload: React.FC = () => {
               console.error('Analysis error:', error);
               setUploadError('Failed to analyze resume. Please try again.');
               setIsUploading(false);
+              setIsProcessing(false);
               setUploadProgress(0);
               setUploadStatus('');
             }
+          };
+          
+          reader.onerror = () => {
+            setUploadError('Failed to read file. Please try again.');
+            setIsUploading(false);
+            setIsProcessing(false);
+            setUploadProgress(0);
+            setUploadStatus('');
           };
           
           reader.readAsText(file);
         } catch (error) {
           setUploadError('Failed to process file. Please try again.');
           setIsUploading(false);
+          setIsProcessing(false);
           setUploadProgress(0);
           setUploadStatus('');
         }
@@ -113,10 +158,11 @@ const ResumeUpload: React.FC = () => {
     } catch (error) {
       setUploadError('Failed to process file. Please try again.');
       setIsUploading(false);
+      setIsProcessing(false);
       setUploadProgress(0);
       setUploadStatus('');
     }
-  }, []);
+  }, [isUploading, isProcessing]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -127,14 +173,17 @@ const ResumeUpload: React.FC = () => {
       'text/plain': ['.txt']
     },
     maxFiles: 1,
-    disabled: isUploading
+    disabled: isUploading || isProcessing
   });
 
   const deleteResume = (id: string) => {
-    storageService.deleteResume(id);
-    setResumes(storageService.getResumes());
-    if (selectedResume?.id === id) {
-      setSelectedResume(null);
+    if (window.confirm('Are you sure you want to delete this resume?')) {
+      storageService.deleteResume(id);
+      const updatedResumes = storageService.getResumes();
+      setResumes(updatedResumes);
+      if (selectedResume?.id === id) {
+        setSelectedResume(updatedResumes.length > 0 ? updatedResumes[0] : null);
+      }
     }
   };
 
@@ -155,12 +204,12 @@ const ResumeUpload: React.FC = () => {
             className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 ${
               isDragActive
                 ? 'border-blue-500 bg-blue-50'
-                : isUploading
+                : isUploading || isProcessing
                 ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
                 : 'border-gray-300 hover:border-gray-400'
             }`}
-            whileHover={!isUploading ? { scale: 1.02 } : {}}
-            whileTap={!isUploading ? { scale: 0.98 } : {}}
+            whileHover={!isUploading && !isProcessing ? { scale: 1.02 } : {}}
+            whileTap={!isUploading && !isProcessing ? { scale: 0.98 } : {}}
           >
             <input {...getInputProps()} />
             <div className="space-y-4">
@@ -213,44 +262,51 @@ const ResumeUpload: React.FC = () => {
           <div className="mt-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Resumes</h3>
             <div className="space-y-3">
-              {resumes.map((resume) => (
-                <motion.div
-                  key={resume.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                    selectedResume?.id === resume.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => setSelectedResume(resume)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {resume.fileName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Score: {resume.analysis.overallScore}/100
-                        </p>
+              {resumes.length > 0 ? (
+                resumes.map((resume) => (
+                  <motion.div
+                    key={resume.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      selectedResume?.id === resume.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedResume(resume)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {resume.fileName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Score: {resume.analysis.overallScore}/100 • {new Date(resume.uploadDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteResume(resume.id);
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteResume(resume.id);
-                        }}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">No resumes uploaded yet</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

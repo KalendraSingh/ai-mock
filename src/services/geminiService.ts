@@ -357,12 +357,13 @@ class GeminiService {
       Experience: ${resumeData.experience.map(e => `${e.position} at ${e.company}`).join(', ')}
       
       Provide helpful guidance that:
-      1. Acknowledges their answer
-      2. Provides a hint or direction for a better response
-      3. Encourages them to elaborate or clarify
-      4. Relates to their resume background
+      1. Acknowledges their answer positively
+      2. Provides a specific hint or direction for improvement
+      3. Encourages them to provide more detail or clarity
+      4. Relates to their resume background when possible
       
-      Keep it supportive and brief (1-2 sentences). Then say "Let me ask you this again" and restate the question.
+      IMPORTANT: Do NOT repeat the question again. Just provide guidance and encouragement.
+      Keep it supportive and brief (1-2 sentences). End with "Please continue with your answer."
     `;
 
     return await this.makeRequest(prompt);
@@ -384,7 +385,7 @@ class GeminiService {
       - "Great, let's move on. ${nextQuestion.question}"
       - "I see. Next question: ${nextQuestion.question}"
       
-      Keep it natural and conversational.
+      Keep it natural and conversational. Return only the transition with the question.
     `;
 
     return await this.makeRequest(prompt);
@@ -420,7 +421,7 @@ class GeminiService {
       - Is it relevant to the question?
       - Is it technically accurate (for technical questions)?
       - Is it complete and well-structured?
-      - Score 70+ for good answers, 50-69 for okay answers, below 50 for poor answers
+      - Score 80+ for excellent answers, 70-79 for good answers, 60-69 for okay answers, below 60 for poor answers
     `;
 
     const response = await this.makeRequest(prompt);
