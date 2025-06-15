@@ -21,7 +21,6 @@ class SpeechService {
       this.recognition.maxAlternatives = 1;
       
       // Improved settings for better recognition
-      this.recognition.grammars = null;
       this.recognition.serviceURI = '';
     }
   }
