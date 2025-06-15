@@ -81,24 +81,23 @@ const ResumeUpload: React.FC = () => {
     setUploadError(null);
 
     try {
+      // Check if file with same name already exists
+      const existingResumes = storageService.getResumes();
+      const existingFile = existingResumes.find(resume => 
+        resume.fileName === file.name
+      );
+
+      if (existingFile) {
+        setUploadError(`A resume with the name "${file.name}" already exists. Please rename the file or delete the existing one.`);
+        setIsUploading(false);
+        setIsProcessing(false);
+        setUploadProgress(0);
+        setUploadStatus('');
+        return;
+      }
+
       simulateProgress(async () => {
         try {
-          // Check if file already exists
-          const existingResumes = storageService.getResumes();
-          const existingFile = existingResumes.find(resume => 
-            resume.fileName === file.name && 
-            Math.abs(new Date(resume.uploadDate).getTime() - Date.now()) < 60000 // Within 1 minute
-          );
-
-          if (existingFile) {
-            setUploadError('This file has already been uploaded recently.');
-            setIsUploading(false);
-            setIsProcessing(false);
-            setUploadProgress(0);
-            setUploadStatus('');
-            return;
-          }
-
           // Simulate PDF text extraction (in real app, use pdf-parse or similar)
           const reader = new FileReader();
           reader.onload = async (e) => {
@@ -115,11 +114,18 @@ const ResumeUpload: React.FC = () => {
                 ...analysisResult
               };
 
-              // Save and update state
+              // Save the resume
               storageService.saveResume(resumeData);
+              
+              // Update state with fresh data from storage to ensure consistency
               const updatedResumes = storageService.getResumes();
               setResumes(updatedResumes);
-              setSelectedResume(resumeData);
+              
+              // Set the newly uploaded resume as selected
+              const newResume = updatedResumes.find(r => r.id === resumeData.id);
+              if (newResume) {
+                setSelectedResume(newResume);
+              }
               
               // Reset progress states
               setTimeout(() => {
@@ -260,7 +266,7 @@ const ResumeUpload: React.FC = () => {
 
           {/* Resume List */}
           <div className="mt-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Resumes</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Resumes ({resumes.length})</h3>
             <div className="space-y-3">
               {resumes.length > 0 ? (
                 resumes.map((resume) => (
