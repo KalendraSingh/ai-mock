@@ -9,7 +9,8 @@ import {
   Award, 
   Clock,
   ArrowRight,
-  Upload
+  Upload,
+  Sparkles
 } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { ResumeData, InterviewSession } from '../../types';
@@ -46,14 +47,14 @@ const Dashboard: React.FC = () => {
       title: 'Start Interview',
       description: 'Begin your AI-powered interview session',
       icon: Mic,
-      color: 'from-blue-500 to-indigo-500',
+      color: 'from-purple-500 to-pink-500',
       path: '/interview'
     },
     {
       title: 'View Analytics',
       description: 'Track your progress and performance',
       icon: BarChart3,
-      color: 'from-purple-500 to-violet-500',
+      color: 'from-blue-500 to-cyan-500',
       path: '/feedback'
     }
   ];
@@ -63,29 +64,29 @@ const Dashboard: React.FC = () => {
       title: 'Total Interviews',
       value: stats.totalInterviews,
       icon: Mic,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/10'
     },
     {
       title: 'Average Score',
       value: `${stats.averageScore}%`,
       icon: TrendingUp,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10'
     },
     {
       title: 'Best Performance',
       value: `${stats.bestScore}%`,
       icon: Award,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
+      color: 'text-yellow-400',
+      bgColor: 'bg-yellow-500/10'
     },
     {
       title: 'Resumes Uploaded',
       value: resumes.length,
       icon: FileText,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100'
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10'
     }
   ];
 
@@ -97,10 +98,14 @@ const Dashboard: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         className="text-center py-8"
       >
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Welcome to AI Interview Pro
-        </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+        <div className="flex items-center justify-center mb-4">
+          <Sparkles className="w-8 h-8 text-purple-400 mr-2 animate-pulse" />
+          <h1 className="text-4xl font-bold gradient-text">
+            Welcome to AI Interview Pro
+          </h1>
+          <Sparkles className="w-8 h-8 text-pink-400 ml-2 animate-pulse" />
+        </div>
+        <p className="text-xl text-gray-300 max-w-2xl mx-auto">
           Master your interviews with AI-powered practice sessions, personalized feedback, 
           and professional resume enhancement.
         </p>
@@ -122,16 +127,16 @@ const Dashboard: React.FC = () => {
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 group-hover:border-gray-300"
+              className="card hover-effect group-hover:border-purple-500/30"
             >
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${action.color} flex items-center justify-center mb-4`}>
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${action.color} flex items-center justify-center mb-4 animate-float`}>
                 <action.icon className="w-6 h-6 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-purple-400 transition-colors">
                 {action.title}
               </h3>
-              <p className="text-gray-600 mb-4">{action.description}</p>
-              <div className="flex items-center text-blue-600 font-medium group-hover:translate-x-1 transition-transform">
+              <p className="text-gray-400 mb-4">{action.description}</p>
+              <div className="flex items-center text-purple-400 font-medium group-hover:translate-x-1 transition-transform">
                 Get started <ArrowRight className="w-4 h-4 ml-1" />
               </div>
             </motion.div>
@@ -149,12 +154,12 @@ const Dashboard: React.FC = () => {
         {statCards.map((stat, index) => (
           <div
             key={index}
-            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+            className="card"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-sm text-gray-400 mb-1">{stat.title}</p>
+                <p className="text-2xl font-bold text-white">{stat.value}</p>
               </div>
               <div className={`w-10 h-10 rounded-lg ${stat.bgColor} flex items-center justify-center`}>
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
@@ -172,12 +177,12 @@ const Dashboard: React.FC = () => {
         className="grid md:grid-cols-2 gap-6"
       >
         {/* Recent Interviews */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="card">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Interviews</h2>
+            <h2 className="text-xl font-semibold text-white">Recent Interviews</h2>
             <Link 
               to="/history" 
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              className="text-purple-400 hover:text-purple-300 text-sm font-medium"
             >
               View all
             </Link>
@@ -190,21 +195,21 @@ const Dashboard: React.FC = () => {
                   Object.values(interview.scores).reduce((sum, score) => sum + score, 0) / 5
                 );
                 return (
-                  <div key={interview.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={interview.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
                     <div className="flex items-center space-x-3">
                       <Clock className="w-4 h-4 text-gray-400" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-white">
                           Interview Session
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           {new Date(interview.date).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{avgScore}%</p>
-                      <p className="text-xs text-gray-500">Score</p>
+                      <p className="text-sm font-semibold text-purple-400">{avgScore}%</p>
+                      <p className="text-xs text-gray-400">Score</p>
                     </div>
                   </div>
                 );
@@ -212,11 +217,11 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <Mic className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No interviews yet</p>
+              <Mic className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">No interviews yet</p>
               <Link 
                 to="/interview" 
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                className="text-purple-400 hover:text-purple-300 text-sm font-medium"
               >
                 Start your first interview
               </Link>
@@ -225,12 +230,12 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Resume Status */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="card">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Your Resumes</h2>
+            <h2 className="text-xl font-semibold text-white">Your Resumes</h2>
             <Link 
               to="/resume" 
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              className="text-purple-400 hover:text-purple-300 text-sm font-medium"
             >
               Manage
             </Link>
@@ -239,14 +244,14 @@ const Dashboard: React.FC = () => {
           {resumes.length > 0 ? (
             <div className="space-y-4">
               {resumes.slice(0, 3).map((resume) => (
-                <div key={resume.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={resume.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
                   <div className="flex items-center space-x-3">
                     <FileText className="w-4 h-4 text-gray-400" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-white">
                         {resume.fileName}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         Score: {resume.analysis.overallScore}/100
                       </p>
                     </div>
@@ -265,11 +270,11 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No resumes uploaded</p>
+              <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">No resumes uploaded</p>
               <Link 
                 to="/resume" 
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                className="text-purple-400 hover:text-purple-300 text-sm font-medium"
               >
                 Upload your first resume
               </Link>

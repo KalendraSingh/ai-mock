@@ -4,7 +4,8 @@ import {
   Mic, MicOff, Play, Square,
   MessageCircle, Brain, User,
   FileText, AlertCircle, Clock,
-  CheckCircle, Target, BarChart3
+  CheckCircle, Target, BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { speechService } from '../../services/speechService';
 import { geminiService } from '../../services/geminiService';
@@ -505,34 +506,38 @@ const InterviewSession: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">AI Interview Session</h1>
-        <p className="text-lg text-gray-600">
+        <div className="flex items-center justify-center mb-4">
+          <Sparkles className="w-6 h-6 text-purple-400 mr-2" />
+          <h1 className="text-3xl font-bold gradient-text">AI Interview Session</h1>
+          <Sparkles className="w-6 h-6 text-pink-400 ml-2" />
+        </div>
+        <p className="text-lg text-gray-300">
           Professional interview experience with AI-powered assessment
         </p>
       </div>
 
       {/* Simple Progress Indicator (No Question Numbers) */}
       {isSessionActive && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
-              <Target className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-900">Interview Progress</h3>
+              <Target className="w-5 h-5 text-purple-400" />
+              <h3 className="text-lg font-semibold text-white">Interview Progress</h3>
             </div>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-400">
               Questions Asked: {questionsAsked}
             </div>
           </div>
           
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+          <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
             <div
-              className="h-2 bg-blue-500 rounded-full transition-all duration-300"
+              className="h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300"
               style={{ width: `${(questionsAsked / totalQuestions) * 100}%` }}
             />
           </div>
 
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               Interview in progress - Answer naturally and take your time
             </p>
           </div>
@@ -541,10 +546,10 @@ const InterviewSession: React.FC = () => {
 
       {/* Resume Selection */}
       {!isSessionActive && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="card">
           <div className="flex items-center space-x-2 mb-4">
-            <FileText className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Select Resume for Interview</h3>
+            <FileText className="w-5 h-5 text-purple-400" />
+            <h3 className="text-lg font-semibold text-white">Select Resume for Interview</h3>
           </div>
           
           {resumes.length > 0 ? (
@@ -555,21 +560,21 @@ const InterviewSession: React.FC = () => {
                   onClick={() => setSelectedResume(resume)}
                   className={`p-4 rounded-lg border cursor-pointer transition-all ${
                     selectedResume?.id === resume.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-purple-500/50 bg-purple-500/10'
+                      : 'border-white/10 hover:border-white/20 bg-white/5'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">{resume.fileName}</p>
-                      <p className="text-sm text-gray-600">{resume.personalInfo.name}</p>
+                      <p className="font-medium text-white">{resume.fileName}</p>
+                      <p className="text-sm text-gray-400">{resume.personalInfo.name}</p>
                       <p className="text-xs text-gray-500">
                         Score: {resume.analysis.overallScore}/100 • 
                         Uploaded {new Date(resume.uploadDate).toLocaleDateString()}
                       </p>
                     </div>
                     {selectedResume?.id === resume.id && (
-                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
                         <div className="w-2 h-2 bg-white rounded-full" />
                       </div>
                     )}
@@ -579,11 +584,11 @@ const InterviewSession: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No resumes found</p>
+              <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400 mb-4">No resumes found</p>
               <a
                 href="/resume"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-purple-400 hover:text-purple-300 font-medium"
               >
                 Upload a resume first
               </a>
@@ -593,7 +598,7 @@ const InterviewSession: React.FC = () => {
       )}
 
       {/* Interview Controls */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+      <div className="card">
         <div className="flex items-center justify-center space-x-4">
           {!isSessionActive ? (
             <motion.button
@@ -601,7 +606,7 @@ const InterviewSession: React.FC = () => {
               whileTap={{ scale: 0.95 }}
               onClick={startInterview}
               disabled={!selectedResume || isGeneratingQuestions}
-              className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 btn-tertiary px-8 py-3 font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-5 h-5" />
               <span>{isGeneratingQuestions ? 'Preparing Interview...' : 'Start Interview'}</span>
@@ -639,21 +644,21 @@ const InterviewSession: React.FC = () => {
         {/* Status Indicators */}
         <div className="flex items-center justify-center space-x-6 mt-4">
           <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isAISpeaking ? 'bg-blue-500 animate-pulse' : 'bg-gray-300'}`} />
-            <span className="text-sm text-gray-600">AI Speaking</span>
+            <div className={`w-3 h-3 rounded-full ${isAISpeaking ? 'bg-purple-500 animate-pulse' : 'bg-gray-600'}`} />
+            <span className="text-sm text-gray-400">AI Speaking</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isListening ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
-            <span className="text-sm text-gray-600">Listening</span>
+            <div className={`w-3 h-3 rounded-full ${isListening ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            <span className="text-sm text-gray-400">Listening</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isProcessing ? 'bg-yellow-500 animate-pulse' : 'bg-gray-300'}`} />
-            <span className="text-sm text-gray-600">Processing</span>
+            <div className={`w-3 h-3 rounded-full ${isProcessing ? 'bg-yellow-500 animate-pulse' : 'bg-gray-600'}`} />
+            <span className="text-sm text-gray-400">Processing</span>
           </div>
           {pauseCountdown > 0 && (
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse" />
-              <span className="text-sm text-orange-600">Auto-submit in {pauseCountdown}s</span>
+              <span className="text-sm text-orange-400">Auto-submit in {pauseCountdown}s</span>
             </div>
           )}
         </div>
@@ -664,32 +669,32 @@ const InterviewSession: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 border border-blue-200 rounded-xl p-4"
+          className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4"
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
-              <Mic className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-900">You're saying:</span>
+              <Mic className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-medium text-purple-300">You're saying:</span>
             </div>
             {pauseCountdown > 0 && (
               <div className="flex items-center space-x-1">
-                <Clock className="w-4 h-4 text-orange-600" />
-                <span className="text-xs text-orange-600 font-medium">
+                <Clock className="w-4 h-4 text-orange-400" />
+                <span className="text-xs text-orange-400 font-medium">
                   Auto-submit in {pauseCountdown}s
                 </span>
               </div>
             )}
           </div>
-          <p className="text-blue-800">{currentTranscript}</p>
+          <p className="text-purple-200">{currentTranscript}</p>
         </motion.div>
       )}
 
       {/* Selected Resume Info */}
       {selectedResume && isSessionActive && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+        <div className="bg-pink-500/10 border border-pink-500/20 rounded-xl p-4">
           <div className="flex items-center space-x-2">
-            <FileText className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-medium text-purple-900">
+            <FileText className="w-4 h-4 text-pink-400" />
+            <span className="text-sm font-medium text-pink-300">
               Interview based on: {selectedResume.fileName} ({selectedResume.personalInfo.name})
             </span>
           </div>
@@ -697,11 +702,11 @@ const InterviewSession: React.FC = () => {
       )}
 
       {/* Conversation */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+      <div className="card">
+        <div className="p-6 border-b border-white/10">
           <div className="flex items-center space-x-2">
-            <MessageCircle className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Interview Conversation</h2>
+            <MessageCircle className="w-5 h-5 text-gray-400" />
+            <h2 className="text-lg font-semibold text-white">Interview Conversation</h2>
           </div>
         </div>
         
@@ -719,19 +724,19 @@ const InterviewSession: React.FC = () => {
                 }`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                     entry.speaker === 'ai' 
-                      ? 'bg-blue-100 text-blue-600' 
-                      : 'bg-green-100 text-green-600'
+                      ? 'bg-purple-500/20 text-purple-400' 
+                      : 'bg-green-500/20 text-green-400'
                   }`}>
                     {entry.speaker === 'ai' ? <Brain className="w-4 h-4" /> : <User className="w-4 h-4" />}
                   </div>
                   <div className={`rounded-2xl p-4 ${
                     entry.speaker === 'ai'
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'bg-blue-600 text-white'
+                      ? 'bg-white/5 text-gray-200 border border-white/10'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
                   }`}>
                     <p className="text-sm">{entry.message}</p>
                     <p className={`text-xs mt-2 ${
-                      entry.speaker === 'ai' ? 'text-gray-500' : 'text-blue-200'
+                      entry.speaker === 'ai' ? 'text-gray-500' : 'text-purple-200'
                     }`}>
                       {entry.timestamp.toLocaleTimeString()}
                     </p>
@@ -743,8 +748,8 @@ const InterviewSession: React.FC = () => {
           
           {conversation.length === 0 && (
             <div className="text-center py-8">
-              <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Your interview conversation will appear here</p>
+              <MessageCircle className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">Your interview conversation will appear here</p>
             </div>
           )}
           
@@ -754,12 +759,12 @@ const InterviewSession: React.FC = () => {
 
       {/* Browser Support Warning */}
       {(!speechSupport.synthesis || !speechSupport.recognition) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
           <div className="flex items-center space-x-2">
-            <AlertCircle className="w-5 h-5 text-yellow-600" />
+            <AlertCircle className="w-5 h-5 text-yellow-400" />
             <div>
-              <h3 className="text-sm font-medium text-yellow-900">Limited Browser Support</h3>
-              <p className="text-sm text-yellow-700 mt-1">
+              <h3 className="text-sm font-medium text-yellow-300">Limited Browser Support</h3>
+              <p className="text-sm text-yellow-400 mt-1">
                 {!speechSupport.synthesis && 'Text-to-speech is not supported. '}
                 {!speechSupport.recognition && 'Speech recognition is not supported. '}
                 For the best experience, please use Chrome or Edge.
