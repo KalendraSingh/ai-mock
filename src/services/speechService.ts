@@ -253,3 +253,5 @@ class SpeechService {
     return this.isListening;
   }
 }
+
+export const speechService = new SpeechService();
