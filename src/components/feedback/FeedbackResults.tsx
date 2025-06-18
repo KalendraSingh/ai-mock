@@ -82,16 +82,31 @@ const FeedbackResults: React.FC = () => {
     return 'bg-red-500/10';
   };
 
+  const getPerformanceMessage = (score: number, questionsAnswered: number) => {
+    if (questionsAnswered < 5) {
+      return "Interview ended early. Consider completing more questions for better assessment.";
+    }
+    if (score >= 80) return "Excellent performance! You demonstrated strong skills across all areas.";
+    if (score >= 60) return "Good performance with room for improvement in some areas.";
+    return "There are several areas where you can improve. Keep practicing!";
+  };
+
+  const getAccuracyMessage = (accuracy: number, questionsAnswered: number) => {
+    if (questionsAnswered === 0) return "No questions were completed";
+    if (questionsAnswered < 5) return `Only ${questionsAnswered} question${questionsAnswered === 1 ? '' : 's'} completed - try to answer more questions`;
+    return `${session.feedback.correctAnswers} out of ${session.feedback.totalQuestions} questions answered correctly`;
+  };
+
   return (
     <div className="space-y-8">
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
           <Sparkles className="w-6 h-6 text-purple-400 mr-2" />
-          <h1 className="text-3xl font-bold gradient-text">Structured Interview Results</h1>
+          <h1 className="text-3xl font-bold gradient-text">Interview Results</h1>
           <Sparkles className="w-6 h-6 text-pink-400 ml-2" />
         </div>
         <p className="text-lg text-gray-300">
-          Detailed analysis of your 25-question interview performance
+          Analysis of your interview performance
         </p>
       </div>
 
@@ -102,14 +117,16 @@ const FeedbackResults: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="card text-center"
         >
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-2xl font-bold mb-4 animate-float">
+          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-white text-2xl font-bold mb-4 animate-float ${
+            averageScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+            averageScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+            'bg-gradient-to-r from-red-500 to-pink-500'
+          }`}>
             {averageScore}%
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Overall Performance</h2>
           <p className="text-gray-400">
-            {averageScore >= 80 && "Excellent performance! You demonstrated strong skills across all areas."}
-            {averageScore >= 60 && averageScore < 80 && "Good performance with room for improvement in some areas."}
-            {averageScore < 60 && "There are several areas where you can improve. Keep practicing!"}
+            {getPerformanceMessage(averageScore, session.feedback.totalQuestions)}
           </p>
         </motion.div>
 
@@ -119,12 +136,16 @@ const FeedbackResults: React.FC = () => {
           transition={{ delay: 0.1 }}
           className="card text-center"
         >
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-2xl font-bold mb-4 animate-float">
+          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full text-white text-2xl font-bold mb-4 animate-float ${
+            session.feedback.accuracyPercentage >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+            session.feedback.accuracyPercentage >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
+            'bg-gradient-to-r from-red-500 to-pink-500'
+          }`}>
             {session.feedback.accuracyPercentage}%
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Answer Accuracy</h2>
           <p className="text-gray-400">
-            {session.feedback.correctAnswers} out of {session.feedback.totalQuestions} questions answered correctly
+            {getAccuracyMessage(session.feedback.accuracyPercentage, session.feedback.totalQuestions)}
           </p>
         </motion.div>
       </div>
@@ -168,7 +189,7 @@ const FeedbackResults: React.FC = () => {
                       className={`h-2 rounded-full transition-all duration-500 ${
                         score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
                       }`}
-                      style={{ width: `${score}%` }}
+                      style={{ width: `${Math.max(score, 5)}%` }}
                     />
                   </div>
                 </div>
@@ -263,8 +284,8 @@ const FeedbackResults: React.FC = () => {
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
-            <div className="text-2xl font-bold text-white">{session.totalQuestions}</div>
-            <div className="text-sm text-gray-400">Total Questions</div>
+            <div className="text-2xl font-bold text-white">{session.feedback.totalQuestions}</div>
+            <div className="text-sm text-gray-400">Questions Answered</div>
           </div>
           <div className="text-center p-4 bg-green-500/10 rounded-lg border border-green-500/20">
             <div className="text-2xl font-bold text-green-400">{session.feedback.correctAnswers}</div>
@@ -284,46 +305,50 @@ const FeedbackResults: React.FC = () => {
       {/* Detailed Feedback */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Strengths */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="card"
-        >
-          <div className="flex items-center space-x-2 mb-4">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <h3 className="text-lg font-semibold text-white">Strengths</h3>
-          </div>
-          <div className="space-y-3">
-            {session.feedback.strengths.map((strength, index) => (
-              <div key={index} className="flex items-start space-x-2">
-                <Star className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                <p className="text-gray-300 text-sm">{strength}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+        {session.feedback.strengths.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="card"
+          >
+            <div className="flex items-center space-x-2 mb-4">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <h3 className="text-lg font-semibold text-white">Strengths</h3>
+            </div>
+            <div className="space-y-3">
+              {session.feedback.strengths.map((strength, index) => (
+                <div key={index} className="flex items-start space-x-2">
+                  <Star className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-gray-300 text-sm">{strength}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Areas for Improvement */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="card"
-        >
-          <div className="flex items-center space-x-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-orange-400" />
-            <h3 className="text-lg font-semibold text-white">Areas for Improvement</h3>
-          </div>
-          <div className="space-y-3">
-            {session.feedback.improvements.map((improvement, index) => (
-              <div key={index} className="flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                <p className="text-gray-300 text-sm">{improvement}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+        {session.feedback.improvements.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="card"
+          >
+            <div className="flex items-center space-x-2 mb-4">
+              <TrendingUp className="w-5 h-5 text-orange-400" />
+              <h3 className="text-lg font-semibold text-white">Areas for Improvement</h3>
+            </div>
+            <div className="space-y-3">
+              {session.feedback.improvements.map((improvement, index) => (
+                <div key={index} className="flex items-start space-x-2">
+                  <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-gray-300 text-sm">{improvement}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Mistakes Made */}
         {session.feedback.mistakes.length > 0 && (
@@ -335,7 +360,7 @@ const FeedbackResults: React.FC = () => {
           >
             <div className="flex items-center space-x-2 mb-4">
               <AlertCircle className="w-5 h-5 text-red-400" />
-              <h3 className="text-lg font-semibold text-white">Common Mistakes</h3>
+              <h3 className="text-lg font-semibold text-white">Areas to Address</h3>
             </div>
             <div className="space-y-3">
               {session.feedback.mistakes.map((mistake, index) => (
@@ -349,25 +374,27 @@ const FeedbackResults: React.FC = () => {
         )}
 
         {/* Tips & Recommendations */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9 }}
-          className="card"
-        >
-          <div className="flex items-center space-x-2 mb-4">
-            <BookOpen className="w-5 h-5 text-purple-400" />
-            <h3 className="text-lg font-semibold text-white">Tips & Recommendations</h3>
-          </div>
-          <div className="space-y-3">
-            {session.feedback.tips.map((tip, index) => (
-              <div key={index} className="flex items-start space-x-2">
-                <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0" />
-                <p className="text-gray-300 text-sm">{tip}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+        {session.feedback.tips.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9 }}
+            className="card"
+          >
+            <div className="flex items-center space-x-2 mb-4">
+              <BookOpen className="w-5 h-5 text-purple-400" />
+              <h3 className="text-lg font-semibold text-white">Tips & Recommendations</h3>
+            </div>
+            <div className="space-y-3">
+              {session.feedback.tips.map((tip, index) => (
+                <div key={index} className="flex items-start space-x-2">
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0" />
+                  <p className="text-gray-300 text-sm">{tip}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Action Buttons */}

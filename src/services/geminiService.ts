@@ -442,6 +442,7 @@ class GeminiService {
   }
 
   async evaluateInterview(transcript: string, resumeData: ResumeData, questionProgress: QuestionProgress): Promise<{ scores: SkillScores; feedback: InterviewFeedback }> {
+    // Calculate actual statistics from the interview
     const allQuestions = [
       ...questionProgress.introduction.questions,
       ...questionProgress.technical.questions,
@@ -452,98 +453,133 @@ class GeminiService {
       ...questionProgress.other.questions
     ];
 
-    const correctAnswers = allQuestions.filter(q => q.isCorrect).length;
-    const totalQuestions = allQuestions.length;
-    const accuracyPercentage = Math.round((correctAnswers / totalQuestions) * 100);
+    // Count questions that were actually answered
+    const answeredQuestions = allQuestions.filter(q => q.candidateAnswer && q.candidateAnswer.trim().length > 0);
+    const correctAnswers = allQuestions.filter(q => q.isCorrect === true).length;
+    const totalAnsweredQuestions = answeredQuestions.length;
+    const accuracyPercentage = totalAnsweredQuestions > 0 ? Math.round((correctAnswers / totalAnsweredQuestions) * 100) : 0;
+
+    // Calculate category scores based on actual answers
+    const categoryScores = {
+      introduction: this.calculateCategoryScore(questionProgress.introduction.questions),
+      technical: this.calculateCategoryScore(questionProgress.technical.questions),
+      experience: this.calculateCategoryScore(questionProgress.experience.questions),
+      certification: this.calculateCategoryScore(questionProgress.certification.questions),
+      careerGoals: this.calculateCategoryScore(questionProgress.careerGoals.questions),
+      softSkills: this.calculateCategoryScore(questionProgress.softSkills.questions)
+    };
 
     const prompt = `
-      Analyze this structured interview with 25 questions and provide detailed evaluation:
+      Analyze this interview session and provide realistic evaluation based on ACTUAL performance:
+      
+      ACTUAL INTERVIEW DATA:
+      - Total questions asked: ${totalAnsweredQuestions} out of 25
+      - Questions answered: ${totalAnsweredQuestions}
+      - Correct answers: ${correctAnswers}
+      - Accuracy rate: ${accuracyPercentage}%
+      - Interview was ${totalAnsweredQuestions < 5 ? 'ended very early' : totalAnsweredQuestions < 10 ? 'ended early' : 'completed normally'}
       
       Transcript: ${transcript}
-      Resume Data: ${JSON.stringify(resumeData)}
-      Total Questions: ${totalQuestions}
-      Correct Answers: ${correctAnswers}
-      Accuracy: ${accuracyPercentage}%
       
-      Question Categories:
-      - Introduction: ${questionProgress.introduction.questions.length} questions
-      - Technical: ${questionProgress.technical.questions.length} questions  
-      - Experience: ${questionProgress.experience.questions.length} questions
-      - Certification: ${questionProgress.certification.questions.length} questions
-      - Career Goals: ${questionProgress.careerGoals.questions.length} questions
-      - Soft Skills: ${questionProgress.softSkills.questions.length} questions
+      Resume Context:
+      Name: ${resumeData.personalInfo.name}
+      Skills: ${resumeData.skills.join(', ')}
+      Experience: ${resumeData.experience.map(e => `${e.position} at ${e.company}`).join(', ')}
       
-      Return a JSON object with this structure:
+      IMPORTANT: Base scores on ACTUAL performance, not ideal scenarios:
+      - If interview ended early (< 5 questions), scores should be low (30-50 range)
+      - If few questions answered, technical knowledge should be low
+      - Communication score based on actual responses given
+      - Don't give high scores for incomplete interviews
+      
+      Return JSON with realistic scores:
       {
         "scores": {
-          "communication": 85,
-          "technicalKnowledge": 78,
-          "problemSolving": 82,
-          "confidence": 88,
-          "clarityOfThought": 80,
+          "communication": score_based_on_actual_responses,
+          "technicalKnowledge": score_based_on_technical_answers_given,
+          "problemSolving": score_based_on_problem_solving_shown,
+          "confidence": score_based_on_confidence_displayed,
+          "clarityOfThought": score_based_on_clarity_shown,
           "overallAccuracy": ${accuracyPercentage}
         },
         "feedback": {
-          "strengths": ["specific strength 1", "specific strength 2"],
-          "improvements": ["specific area 1", "specific area 2"],
-          "mistakes": ["specific mistake 1", "specific mistake 2"],
-          "tips": ["specific tip 1", "specific tip 2"],
+          "strengths": ["actual strengths observed", "specific to what was demonstrated"],
+          "improvements": ["areas needing work based on performance", "specific to gaps shown"],
+          "mistakes": ["actual mistakes made", "specific issues observed"],
+          "tips": ["specific advice for improvement", "based on actual performance gaps"],
           "resources": [],
           "categoryScores": {
-            "introduction": 85,
-            "technical": 75,
-            "experience": 80,
-            "certification": 90,
-            "careerGoals": 85,
-            "softSkills": 80
+            "introduction": ${categoryScores.introduction},
+            "technical": ${categoryScores.technical},
+            "experience": ${categoryScores.experience},
+            "certification": ${categoryScores.certification},
+            "careerGoals": ${categoryScores.careerGoals},
+            "softSkills": ${categoryScores.softSkills}
           },
           "correctAnswers": ${correctAnswers},
-          "totalQuestions": ${totalQuestions},
+          "totalQuestions": ${totalAnsweredQuestions},
           "accuracyPercentage": ${accuracyPercentage}
         }
       }
       
-      Evaluate based on answer accuracy, technical knowledge, communication skills, and resume alignment.
+      Be honest about performance - if interview was cut short, reflect that in scores and feedback.
     `;
 
     const response = await this.makeRequest(prompt);
     try {
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const result = JSON.parse(jsonMatch[0]);
+        // Ensure accuracy is correctly set
+        result.scores.overallAccuracy = accuracyPercentage;
+        result.feedback.correctAnswers = correctAnswers;
+        result.feedback.totalQuestions = totalAnsweredQuestions;
+        result.feedback.accuracyPercentage = accuracyPercentage;
+        return result;
       }
       throw new Error('No JSON found in response');
     } catch (error) {
       console.error('Evaluation parsing error:', error);
+      // Return realistic fallback based on actual performance
+      const baseScore = totalAnsweredQuestions < 5 ? 35 : totalAnsweredQuestions < 10 ? 50 : 65;
       return {
         scores: {
-          communication: 75,
-          technicalKnowledge: 70,
-          problemSolving: 75,
-          confidence: 70,
-          clarityOfThought: 75,
+          communication: Math.max(baseScore - 10, 20),
+          technicalKnowledge: Math.max(baseScore - 15, 15),
+          problemSolving: Math.max(baseScore - 10, 20),
+          confidence: Math.max(baseScore - 5, 25),
+          clarityOfThought: Math.max(baseScore - 10, 20),
           overallAccuracy: accuracyPercentage
         },
         feedback: {
-          strengths: ["Completed the structured interview", "Provided answers to all questions"],
-          improvements: ["Continue practicing interview skills", "Work on providing more detailed responses"],
-          mistakes: ["Some answers could be more specific"],
-          tips: ["Practice technical concepts", "Prepare specific examples from experience"],
+          strengths: totalAnsweredQuestions > 0 ? ["Participated in the interview session"] : ["Started the interview process"],
+          improvements: [
+            "Complete more questions in future interviews",
+            "Provide more detailed responses",
+            "Practice interview skills regularly"
+          ],
+          mistakes: totalAnsweredQuestions < 5 ? ["Interview ended too early", "Limited responses provided"] : ["Some answers could be more comprehensive"],
+          tips: [
+            "Practice answering common interview questions",
+            "Prepare specific examples from your experience",
+            "Take time to complete full interview sessions"
+          ],
           resources: [],
-          categoryScores: {
-            introduction: 75,
-            technical: 70,
-            experience: 75,
-            certification: 70,
-            careerGoals: 75,
-            softSkills: 75
-          },
+          categoryScores,
           correctAnswers,
-          totalQuestions,
+          totalQuestions: totalAnsweredQuestions,
           accuracyPercentage
         }
       };
     }
+  }
+
+  private calculateCategoryScore(questions: InterviewQuestion[]): number {
+    const answeredQuestions = questions.filter(q => q.candidateAnswer && q.candidateAnswer.trim().length > 0);
+    if (answeredQuestions.length === 0) return 0;
+    
+    const totalScore = answeredQuestions.reduce((sum, q) => sum + (q.score || 0), 0);
+    return Math.round(totalScore / answeredQuestions.length);
   }
 }
 
