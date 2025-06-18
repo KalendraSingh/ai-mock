@@ -19,10 +19,78 @@ class SpeechService {
       this.recognition.interimResults = true;
       this.recognition.lang = 'en-US';
       this.recognition.maxAlternatives = 1;
-      
-      // Improved settings for better recognition
-      this.recognition.serviceURI = '';
     }
+  }
+
+  private getIndianVoice(): SpeechSynthesisVoice | null {
+    const voices = this.synthesis.getVoices();
+    
+    // Priority order for Indian accent voices
+    const indianVoicePreferences = [
+      // Google voices with Indian accent
+      'Google हिन्दी',
+      'Google English (India)',
+      'Google English India',
+      'Google Indian English',
+      
+      // Microsoft voices with Indian accent
+      'Microsoft Heera - English (India)',
+      'Microsoft Ravi - English (India)',
+      'Microsoft Heera Online (Natural) - English (India)',
+      'Microsoft Ravi Online (Natural) - English (India)',
+      
+      // Other Indian voices
+      'Veena',
+      'Rishi',
+      'Lekha',
+      'Sangeeta',
+      
+      // Fallback to any voice with 'India' in the name
+      ...voices.filter(voice => 
+        voice.name.toLowerCase().includes('india') || 
+        voice.lang.includes('en-IN') ||
+        voice.name.toLowerCase().includes('hindi')
+      ).map(voice => voice.name)
+    ];
+
+    // Try to find preferred Indian voices
+    for (const voiceName of indianVoicePreferences) {
+      const voice = voices.find(v => v.name === voiceName);
+      if (voice) {
+        console.log('Selected Indian voice:', voice.name);
+        return voice;
+      }
+    }
+
+    // Fallback: Look for any voice with Indian characteristics
+    const indianVoice = voices.find(voice => 
+      voice.lang.startsWith('en-IN') || 
+      voice.name.toLowerCase().includes('india') ||
+      voice.name.toLowerCase().includes('hindi') ||
+      voice.name.toLowerCase().includes('indian')
+    );
+
+    if (indianVoice) {
+      console.log('Found Indian accent voice:', indianVoice.name);
+      return indianVoice;
+    }
+
+    // Final fallback: Use a female voice (often sounds more pleasant for Indian accent simulation)
+    const femaleVoice = voices.find(voice => 
+      voice.name.toLowerCase().includes('female') ||
+      voice.name.toLowerCase().includes('woman') ||
+      voice.name.includes('Zira') ||
+      voice.name.includes('Hazel') ||
+      voice.name.includes('Samantha')
+    );
+
+    if (femaleVoice) {
+      console.log('Using female voice as fallback:', femaleVoice.name);
+      return femaleVoice;
+    }
+
+    console.log('No Indian voice found, using default');
+    return voices[0] || null;
   }
 
   speak(text: string, options?: { rate?: number; pitch?: number; volume?: number }): Promise<void> {
@@ -36,19 +104,17 @@ class SpeechService {
       this.stopSpeaking();
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = options?.rate || 0.85; // Slightly slower for better clarity
-      utterance.pitch = options?.pitch || 1;
+      
+      // Adjust settings for Indian accent characteristics
+      utterance.rate = options?.rate || 0.8; // Slightly slower for clarity
+      utterance.pitch = options?.pitch || 1.1; // Slightly higher pitch
       utterance.volume = options?.volume || 0.9;
       
-      // Try to use a more natural voice
-      const voices = this.synthesis.getVoices();
-      const preferredVoice = voices.find(voice => 
-        voice.lang.startsWith('en') && 
-        (voice.name.includes('Google') || voice.name.includes('Microsoft') || voice.name.includes('Natural'))
-      ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
-      
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
+      // Set Indian accent voice
+      const indianVoice = this.getIndianVoice();
+      if (indianVoice) {
+        utterance.voice = indianVoice;
+        console.log('Using voice:', indianVoice.name, 'Language:', indianVoice.lang);
       }
 
       utterance.onend = () => {
@@ -61,8 +127,20 @@ class SpeechService {
         reject(error);
       };
 
-      this.currentUtterance = utterance;
-      this.synthesis.speak(utterance);
+      // Add a small delay to ensure voices are loaded
+      if (this.synthesis.getVoices().length === 0) {
+        this.synthesis.addEventListener('voiceschanged', () => {
+          const voice = this.getIndianVoice();
+          if (voice) {
+            utterance.voice = voice;
+          }
+          this.currentUtterance = utterance;
+          this.synthesis.speak(utterance);
+        }, { once: true });
+      } else {
+        this.currentUtterance = utterance;
+        this.synthesis.speak(utterance);
+      }
     });
   }
 
@@ -250,6 +328,15 @@ class SpeechService {
 
   getIsListening(): boolean {
     return this.isListening;
+  }
+
+  // Method to list available voices (for debugging)
+  listAvailableVoices(): void {
+    const voices = this.synthesis.getVoices();
+    console.log('Available voices:');
+    voices.forEach((voice, index) => {
+      console.log(`${index}: ${voice.name} (${voice.lang}) - ${voice.localService ? 'Local' : 'Remote'}`);
+    });
   }
 }
 
